@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"math"
 	// Available if you need it!
 	// "github.com/xwb1989/sqlparser"
 )
@@ -25,12 +26,77 @@ then content, , first byte is size of record, then 9 size  each table
 
 
 */
+
+func debugPrint(arguments ...interface{}) {
+		debug:=0
+		if debug==1{
+		 fmt.Print("debug: ")
+    for _, arg := range arguments {
+        fmt.Print(arg," ")
+    }
+    fmt.Println()
+		
+		}
+   
+}
 func uint16ArrayToString(array []uint16) string { 
 byteSlice := make([]byte, len(array)*2) 
 for i, value := range array {
  byteSlice[i*2] = byte(value) 
  byteSlice[i*2+1] = byte(value >> 8) } 
  return string(byteSlice)
+ }
+ func isHighBit(inte uint64)bool{
+//   var b byte = byte(inte)
+		
+  // fmt.Println(b)
+    result := inte ^ 128
+
+    // Check if the result matches your condition
+    if result < 128 {
+        return true
+        }
+  	return false
+ }
+ func highBitParse(inte uint64) uint64{
+ 		return uint64(byte(inte) & 0b01111111 )
+ }
+ func byteGrabber(array []byte,startIndex uint64,nextIndex *uint32) uint64{
+ 		debugPrint("hai",*nextIndex)
+ 		var byteCount uint32=0
+ 		debugPrint(isHighBit(uint64(array[int(startIndex+uint64(*nextIndex+byteCount))])))
+ 		for isHighBit(uint64(array[int(startIndex+uint64(*nextIndex+byteCount))]))==true{
+ 		
+	 		//*nextIndex+=1
+	 		byteCount+=1
+ 		}
+ 	//	fmt.Println("hail",*nextIndex)
+ 	//	*nextIndex+=1
+   	byteCount+=1
+ 		bufferHighBit:=make([]byte,byteCount)
+ 		debugPrint("byteCOunt",byteCount)
+ 		for i:=0;i<int(byteCount);i++{
+ 			debugPrint("ori byte",uint64(array[int(startIndex)+i+int(*nextIndex)]))
+ 			bufferHighBit[i]=byte(highBitParse(uint64(array[int(startIndex)+i+int(*nextIndex)])))
+ 		}
+ 		debugPrint("hitler",bufferHighBit,byteCount)
+ 			var size uint64
+ 			length:=int(byteCount)
+ 			for i:=1;i<=int(byteCount);i++{
+	 		//	fmt.Println(uint64(array[int(startIndex)+i+int(*nextIndex)]))
+	 			size+= uint64(int(bufferHighBit[length-i])*(int(math.Pow(2,float64(7*(i-1))))))
+	 			debugPrint("size",size)
+ 			}
+ 			/*
+				if err := binary.Read(bytes.NewReader(bufferHighBit[0:byteCount]), binary.BigEndian, &size); err != nil {
+					fmt.Println("Failed to read integer:", err)
+					return 0
+				}
+				*/
+		*nextIndex+=byteCount
+		debugPrint("padahal",*nextIndex)
+ 		return size
+ 		
  }
 const FILE_HEADER_SIZE = 100
 // Usage: your_program.sh sample.db .dbinfo
@@ -72,44 +138,44 @@ func main() {
 					return
 				}
 				
-			//	 fmt.Println(offsetStartContent);
+				// fmt.Println(offsetStartContent);
 				var contentSize uint16=pageSize-offsetStartContent
 				contents:=make([]byte, contentSize)
 				_, err = databaseFile.ReadAt(contents, int64(offsetStartContent))
 				if err != nil {
 					log.Fatal(err)
 				}
-		//		fmt.Println(contents,len(contents))
+			//	fmt.Println(contents)
+
 				var tableCount uint16
 			if err := binary.Read(bytes.NewReader(schemaBuffer[3:5]), binary.BigEndian, &tableCount); err != nil {
 				fmt.Println("Failed to read integer:", err)
 				return
 			}
 			var tableIndex uint64=0
-			//allTableName := make([][]uint16, tableCount)
+			var nextIndex uint32=0
 			for i:=0; i < int(tableCount); i++{
-				var tableSize uint64=uint64(contents[tableIndex ])
-			//	var tableId uint16=uint16(contents[tableIndex +1])
-				var tableHeaderSize uint64=uint64(contents[tableIndex +2])
-				var tableTypeSize uint64 = uint64(0.5 * float64(contents[tableIndex+3]) - 0.5*13)
-				var tableNameSize uint64=uint64(0.5*float64(contents[tableIndex +4])-0.5*13)
-				var tableTblNameSize uint64=uint64(0.5*float64(contents[tableIndex +5])-0.5*13)
+			
+				var tableSize uint64=uint64(byteGrabber(contents,tableIndex,&nextIndex))
+				debugPrint("haish",nextIndex)
+				nextIndex+=1
+				var gap_size_Rowid uint32=nextIndex
+				var tableHeaderSize uint64=uint64(byteGrabber(contents,tableIndex,&nextIndex))
+				var tableTypeSize uint64 = uint64(0.5 * float64(byteGrabber(contents,tableIndex,&nextIndex)) - 0.5*13)
+				var tableNameSize uint64=uint64(0.5*float64(byteGrabber(contents,tableIndex,&nextIndex))-0.5*13)
+				var tableTblNameSize uint64=uint64(0.5*float64(byteGrabber(contents,tableIndex,&nextIndex))-0.5*13)
 				tableName := make([]uint16, tableTblNameSize)
-				//fmt.Println("current",tableIndex,">",tableSize,tableHeaderSize ,tableIndex+tableSize+2)
-			//	fmt.Println("tblnmsz",tableTblNameSize)
-				var indexTableName uint64=tableIndex+2+tableHeaderSize+tableTypeSize +tableNameSize
+				var indexTableName uint64=tableIndex+uint64(gap_size_Rowid)+tableHeaderSize+tableTypeSize +tableNameSize
 				for ii:=0; ii < int(tableTblNameSize); ii++{
 							tableName[ii]=uint16(contents[int(indexTableName)+ii])
 							
 							
 							
 				}
-			//	fmt.Println("size",tableSize,"next pos",(contents[tableIndex +tableSize+2]),(contents[tableIndex +tableSize+3]),(contents[tableIndex +tableSize+4]))
-	//			fmt.Println(tableIndex,tableSize,2,tableHeaderSize,tableTypeSize ,tableNameSize,"{",float64(contents[tableIndex +4]),"}",tableIndex +tableSize+3,"===<>")
-		//		fmt.Print(indexTableName)
-			//	fmt.Print("  ->")
+				debugPrint("=========",uint16ArrayToString(tableName))
 				fmt.Println(uint16ArrayToString(tableName))
-				tableIndex+=tableSize+2
+				tableIndex+=tableSize+uint64(gap_size_Rowid)
+				nextIndex =0
 				
 			}
 		
