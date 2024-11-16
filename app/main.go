@@ -145,7 +145,7 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
-			//	fmt.Println(contents)
+		//		fmt.Println(contents)
 
 				var tableCount uint16
 			if err := binary.Read(bytes.NewReader(schemaBuffer[3:5]), binary.BigEndian, &tableCount); err != nil {
@@ -155,28 +155,38 @@ func main() {
 			var tableIndex uint64=0
 			var nextIndex uint32=0
 			for i:=0; i < int(tableCount); i++{
-			
-				var tableSize uint64=uint64(byteGrabber(contents,tableIndex,&nextIndex))
-				debugPrint("haish",nextIndex)
-				nextIndex+=1
-				var gap_size_Rowid uint32=nextIndex
-				var tableHeaderSize uint64=uint64(byteGrabber(contents,tableIndex,&nextIndex))
-				var tableTypeSize uint64 = uint64(0.5 * float64(byteGrabber(contents,tableIndex,&nextIndex)) - 0.5*13)
-				var tableNameSize uint64=uint64(0.5*float64(byteGrabber(contents,tableIndex,&nextIndex))-0.5*13)
-				var tableTblNameSize uint64=uint64(0.5*float64(byteGrabber(contents,tableIndex,&nextIndex))-0.5*13)
-				tableName := make([]uint16, tableTblNameSize)
-				var indexTableName uint64=tableIndex+uint64(gap_size_Rowid)+tableHeaderSize+tableTypeSize +tableNameSize
-				for ii:=0; ii < int(tableTblNameSize); ii++{
-							tableName[ii]=uint16(contents[int(indexTableName)+ii])
-							
-							
-							
+				if uint64(byteGrabber(contents,tableIndex,&nextIndex))!=0{
+					nextIndex =0
+					var tableSize uint64=uint64(byteGrabber(contents,tableIndex,&nextIndex))
+					debugPrint("haish",nextIndex)
+					nextIndex+=1
+					var gap_size_Rowid uint32=nextIndex
+					var tableHeaderSize uint64=uint64(byteGrabber(contents,tableIndex,&nextIndex))
+					var tableTypeSize uint64 = uint64(0.5 * float64(byteGrabber(contents,tableIndex,&nextIndex)) - 0.5*13)
+					var tableNameSize uint64=uint64(0.5*float64(byteGrabber(contents,tableIndex,&nextIndex))-0.5*13)
+					var tableTblNameSize uint64=uint64(0.5*float64(byteGrabber(contents,tableIndex,&nextIndex))-0.5*13)
+					tableName := make([]uint16, tableTblNameSize)
+					var indexTableName uint64=tableIndex+uint64(gap_size_Rowid)+tableHeaderSize+tableTypeSize +tableNameSize
+					for ii:=0; ii < int(tableTblNameSize); ii++{
+								tableName[ii]=uint16(contents[int(indexTableName)+ii])
+								
+								
+								
+					}
+					debugPrint("=========",uint16ArrayToString(tableName))
+					fmt.Println(uint16ArrayToString(tableName))
+					tableIndex+=tableSize+uint64(gap_size_Rowid)
+					nextIndex =0
+				}else{
+					nextIndex=3
+			//		fmt.Println(tableIndex,contents[uint64(tableIndex)])
+				//	tableIndex+=uint64(byteGrabber(contents,tableIndex,&nextIndex))
+				tableIndex+=uint64(contents[tableIndex+3])
+					nextIndex=0
+			//		fmt.Println(tableIndex,contents[uint64(tableIndex)],contents[int(tableIndex)+1],contents[int(tableIndex)+2])
+					i-=1
+					
 				}
-				debugPrint("=========",uint16ArrayToString(tableName))
-				fmt.Println(uint16ArrayToString(tableName))
-				tableIndex+=tableSize+uint64(gap_size_Rowid)
-				nextIndex =0
-				
 			}
 		
 		case ".dbinfo":
